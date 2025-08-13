@@ -3,6 +3,7 @@ use crate::consts::{
     SCALE2_ROOT_OF_UNITY,
 };
 use crate::fft_g1::g1_linear_combination;
+use crate::impl_serde;
 use crate::kzg_proofs::{
     expand_root_of_unity, pairings_verify, FFTSettings as ZFFTSettings, KZGSettings as ZKZGSettings,
 };
@@ -46,6 +47,8 @@ fn bigint_check_mod_256(a: &[u64; 4]) -> bool {
 pub struct ZFr {
     pub fr: Scalar,
 }
+
+impl_serde!(ZFr, BYTES_PER_FIELD_ELEMENT);
 
 impl ZFr {
     pub fn from_blst_fr(fr: blst_fr) -> Self {
@@ -366,6 +369,8 @@ pub struct ZG1 {
     pub proj: G1Projective,
 }
 
+impl_serde!(ZG1, BYTES_PER_G1);
+
 impl Hash for ZG1 {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.proj.x.0.hash(state);
@@ -685,6 +690,8 @@ impl PairingVerify<ZG1, ZG2> for ZG1 {
 pub struct ZG2 {
     pub proj: G2Projective,
 }
+
+impl_serde!(ZG2, BYTES_PER_G2);
 
 impl ZG2 {
     pub const fn from_blst_p2(p2: blst_p2) -> Self {

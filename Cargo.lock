@@ -1218,6 +1218,7 @@ dependencies = [
  "hashbrown 0.15.2",
  "num_cpus",
  "rayon",
+ "serde",
  "sha2 0.10.8",
  "siphasher",
  "threadpool",
@@ -1729,6 +1730,8 @@ dependencies = [
  "libc",
  "rand",
  "rayon",
+ "serde",
+ "serde-big-array",
  "subtle",
 ]
 
@@ -1830,6 +1833,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "91d3c334ca1ee894a2c6f6ad698fe8c435b76d504b13d436f0685d648d6d96f7"
 dependencies = [
  "serde_derive",
+]
+
+[[package]]
+name = "serde-big-array"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11fc7cc2c76d73e0f27ee52abbd64eec84d46f370c88371120433196934e4b7f"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

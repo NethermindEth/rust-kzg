@@ -109,3 +109,29 @@ pub(crate) fn fft_settings_to_rust(c_settings: *const CKZGSettings) -> Result<FF
 
 pub(crate) static mut PRECOMPUTATION_TABLES: PrecomputationTableManager<ZFr, ZG1, ZFp, ZG1Affine> =
     PrecomputationTableManager::new();
+
+// This macro is used to implement serialization and deserialization for blst types
+#[macro_export]
+macro_rules! impl_serde {
+    ($blst_type:ty, $bytes_per_type:expr) => {
+        #[cfg(feature = "serde")]
+        impl serde::Serialize for $blst_type {
+            fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+                <[_; $bytes_per_type] as serde_big_array::BigArray<_>>::serialize(
+                    &self.to_bytes(),
+                    serializer,
+                )
+            }
+        }
+
+        #[cfg(feature = "serde")]
+        impl<'de> serde::Deserialize<'de> for $blst_type {
+            fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+                let bytes = <[_; $bytes_per_type] as serde_big_array::BigArray<_>>::deserialize(
+                    deserializer,
+                )?;
+                Ok(Self::from_bytes(&bytes).unwrap())
+            }
+        }
+    };
+}
