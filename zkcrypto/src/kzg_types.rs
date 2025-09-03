@@ -44,6 +44,10 @@ fn bigint_check_mod_256(a: &[u64; 4]) -> bool {
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
 pub struct ZFr {
     pub fr: Scalar,
 }
@@ -365,6 +369,10 @@ impl G1Fp for ZFp {
 }
 
 #[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
 pub struct ZG1 {
     pub proj: G1Projective,
 }
@@ -687,6 +695,10 @@ impl PairingVerify<ZG1, ZG2> for ZG1 {
 }
 
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
 pub struct ZG2 {
     pub proj: G2Projective,
 }

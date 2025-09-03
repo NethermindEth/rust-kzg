@@ -22,6 +22,10 @@ pub type PrecomputationTable<TFr, TG1, TG1Fp, TG1Affine> =
 #[cfg(all(not(feature = "bgmw"), not(feature = "sppark")))]
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
 pub struct EmptyTable<TFr, TG1, TG1Fp, TG1Affine>
 where
     TFr: Fr,

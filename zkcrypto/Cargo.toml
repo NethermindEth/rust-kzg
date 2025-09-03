@@ -15,6 +15,7 @@ subtle = "2.5.0"
 serde = { version = "1.0", optional = true, features = ["derive"] }
 serde-big-array = { version = "0.5", optional = true }
 byteorder = "1.5.0"
+rkyv = { version = "0.8.11", optional = true }
 
 [dev-dependencies]
 criterion = "0.5.1"
@@ -27,6 +28,7 @@ default = ["std", "rand", "serde"]
 parallel = ["dep:rayon", "kzg/parallel"]
 rand = ["dep:rand", "kzg/rand"]
 serde = ["dep:serde", "dep:serde-big-array", "kzg/serde", "serde/rc"]
+rkyv = ["dep:rkyv", "bls12_381/rkyv", "kzg/rkyv"]
 c_bindings = []
 
 [[bench]]

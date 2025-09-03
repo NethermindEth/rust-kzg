@@ -439,6 +439,10 @@ fn endomorphism(p: &G1Affine) -> G1Affine {
 /// This is an element of $\mathbb{G}_1$ represented in the projective coordinate space.
 #[cfg_attr(docsrs, doc(cfg(feature = "groups")))]
 #[derive(Copy, Clone, Debug)]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
 pub struct G1Projective {
     pub x: Fp,
     pub y: Fp,

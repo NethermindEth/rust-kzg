@@ -9,6 +9,10 @@ use super::pippenger_utils::{
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
 pub struct BgmwTable<TFr, TG1, TG1Fp, TG1Affine>
 where
     TFr: Fr,
@@ -36,6 +40,10 @@ const NBITS: usize = 255;
 #[cfg(feature = "parallel")]
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
 enum BgmwWindow {
     Sync(usize),
     Parallel((usize, usize, usize)),

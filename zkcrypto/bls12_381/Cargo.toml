@@ -13,7 +13,7 @@ version = "0.8.0"
 edition = "2021"
 
 [package.metadata.docs.rs]
-rustdoc-args = [ "--html-in-header", "katex-header.html" ]
+rustdoc-args = ["--html-in-header", "katex-header.html"]
 
 [dev-dependencies]
 csv = ">= 1.0, < 1.2" # csv 1.2 has MSRV 1.60
@@ -63,6 +63,10 @@ version = "1.4"
 default-features = false
 optional = true
 
+[dependencies.rkyv]
+version = "0.8"
+optional = true
+
 [features]
 default = ["groups", "pairings", "alloc", "bits"]
 bits = ["ff/bits"]
@@ -71,3 +75,4 @@ pairings = ["groups", "pairing"]
 alloc = ["group/alloc"]
 experimental = ["digest"]
 nightly = ["subtle/nightly"]
+rkyv = ["dep:rkyv"]
