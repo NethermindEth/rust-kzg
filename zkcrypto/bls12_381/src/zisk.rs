@@ -41,12 +41,12 @@ pub const R_RAW: [u64; 6] = [
 
 /// R^-1 mod p (modular inverse of Montgomery parameter)
 pub const R_INV_RAW: [u64; 6] = [
-    0x7908_5da1_6a58_f0e1,
-    0xb3a6_3d2d_1da8_a4e6,
-    0x52ae_4a89_9dae_4dcf,
-    0x61a0_e07c_b5e3_f16a,
-    0x5ed2_96f0_7cb1_80ac,
-    0x0d97_3e7a_96c2_ac64,
+    0xf4d3_8259_380b_4820,
+    0x7fe1_1274_d898_fafb,
+    0x343e_a979_1495_6dc8,
+    0x1797_ab14_58a8_8de9,
+    0xed5e_6427_3c4f_538b,
+    0x14fe_c701_e8fb_0ce9,
 ];
 
 pub const ZERO_6: [u64; 6] = [0u64; 6];
