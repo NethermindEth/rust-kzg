@@ -121,14 +121,21 @@ pub fn pairings_verify(a1: &ZG1, a2: &ZG2, b1: &ZG1, b2: &ZG2) -> bool {
         // Pair 0: (a1_neg, a2)
         let g1_bytes = aa1.to_uncompressed();
         pairs_buf[0..96].copy_from_slice(&g1_bytes);
-        let g2_bytes = aa2.to_uncompressed();
-        pairs_buf[96..288].copy_from_slice(&g2_bytes);
+        // to_uncompressed() gives [c1,c0,c1,c0] but ziskos expects [c0,c1,c0,c1]
+        let g2_uncomp = aa2.to_uncompressed();
+        pairs_buf[96..144].copy_from_slice(&g2_uncomp[48..96]); // x_c0
+        pairs_buf[144..192].copy_from_slice(&g2_uncomp[0..48]); // x_c1
+        pairs_buf[192..240].copy_from_slice(&g2_uncomp[144..192]); // y_c0
+        pairs_buf[240..288].copy_from_slice(&g2_uncomp[96..144]); // y_c1
 
         // Pair 1: (b1, b2)
         let g1_bytes = bb1.to_uncompressed();
         pairs_buf[288..384].copy_from_slice(&g1_bytes);
-        let g2_bytes = bb2.to_uncompressed();
-        pairs_buf[384..576].copy_from_slice(&g2_bytes);
+        let g2_uncomp = bb2.to_uncompressed();
+        pairs_buf[384..432].copy_from_slice(&g2_uncomp[48..96]); // x_c0
+        pairs_buf[432..480].copy_from_slice(&g2_uncomp[0..48]); // x_c1
+        pairs_buf[480..528].copy_from_slice(&g2_uncomp[144..192]); // y_c0
+        pairs_buf[528..576].copy_from_slice(&g2_uncomp[96..144]); // y_c1
 
         let ret = unsafe { bls12_381_pairing_check_c(pairs_buf.as_ptr(), 2) };
         return ret == 0; // 0 = pairing check passed (product of pairings == identity)

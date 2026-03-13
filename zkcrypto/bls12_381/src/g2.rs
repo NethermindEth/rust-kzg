@@ -842,12 +842,12 @@ impl G2Projective {
             let affine = G2Affine::from(self);
 
             // Build pair: 192 bytes G2 point + 32 bytes scalar = 224 bytes
-            // G2 encoding: x_im (c1) || x_re (c0) || y_im (c1) || y_re (c0), each 48 bytes BE
+            // Ziskos G2 encoding: x_c0 (real) || x_c1 (imag) || y_c0 (real) || y_c1 (imag), each 48 bytes BE
             let mut pair = [0u8; 224];
-            pair[0..48].copy_from_slice(&affine.x.c1.to_bytes());
-            pair[48..96].copy_from_slice(&affine.x.c0.to_bytes());
-            pair[96..144].copy_from_slice(&affine.y.c1.to_bytes());
-            pair[144..192].copy_from_slice(&affine.y.c0.to_bytes());
+            pair[0..48].copy_from_slice(&affine.x.c0.to_bytes());
+            pair[48..96].copy_from_slice(&affine.x.c1.to_bytes());
+            pair[96..144].copy_from_slice(&affine.y.c0.to_bytes());
+            pair[144..192].copy_from_slice(&affine.y.c1.to_bytes());
             // Scalar bytes are little-endian; ziskos expects big-endian
             let len = by.len().min(32);
             for i in 0..len {
@@ -861,10 +861,10 @@ impl G2Projective {
                 return G2Projective::identity();
             }
 
-            let x_c1 = Fp::from_bytes(result[0..48].try_into().unwrap()).unwrap();
-            let x_c0 = Fp::from_bytes(result[48..96].try_into().unwrap()).unwrap();
-            let y_c1 = Fp::from_bytes(result[96..144].try_into().unwrap()).unwrap();
-            let y_c0 = Fp::from_bytes(result[144..192].try_into().unwrap()).unwrap();
+            let x_c0 = Fp::from_bytes(result[0..48].try_into().unwrap()).unwrap();
+            let x_c1 = Fp::from_bytes(result[48..96].try_into().unwrap()).unwrap();
+            let y_c0 = Fp::from_bytes(result[96..144].try_into().unwrap()).unwrap();
+            let y_c1 = Fp::from_bytes(result[144..192].try_into().unwrap()).unwrap();
             G2Projective::from(G2Affine {
                 x: Fp2 { c0: x_c0, c1: x_c1 },
                 y: Fp2 { c0: y_c0, c1: y_c1 },
