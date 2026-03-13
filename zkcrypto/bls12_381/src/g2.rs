@@ -827,26 +827,73 @@ impl G2Projective {
         G2Projective::conditional_select(&tmp, self, rhs.is_identity())
     }
 
+    #[allow(unsafe_code)]
     fn multiply(&self, by: &[u8]) -> G2Projective {
-        let mut acc = G2Projective::identity();
-
-        // This is a simple double-and-add implementation of point
-        // multiplication, moving from most significant to least
-        // significant bit of the scalar.
-        //
-        // We skip the leading bit because it's always unset for Fq
-        // elements.
-        for bit in by
-            .iter()
-            .rev()
-            .flat_map(|byte| (0..8).rev().map(move |i| Choice::from((byte >> i) & 1u8)))
-            .skip(1)
+        #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
         {
-            acc = acc.double();
-            acc = G2Projective::conditional_select(&acc, &(acc + self), bit);
+            extern "C" {
+                fn bls12_381_g2_msm_c(ret: *mut u8, pairs: *const u8, num_pairs: usize) -> u8;
+            }
+
+            if bool::from(self.is_identity()) {
+                return G2Projective::identity();
+            }
+
+            let affine = G2Affine::from(self);
+
+            // Build pair: 192 bytes G2 point + 32 bytes scalar = 224 bytes
+            // G2 encoding: x_im (c1) || x_re (c0) || y_im (c1) || y_re (c0), each 48 bytes BE
+            let mut pair = [0u8; 224];
+            pair[0..48].copy_from_slice(&affine.x.c1.to_bytes());
+            pair[48..96].copy_from_slice(&affine.x.c0.to_bytes());
+            pair[96..144].copy_from_slice(&affine.y.c1.to_bytes());
+            pair[144..192].copy_from_slice(&affine.y.c0.to_bytes());
+            // Scalar bytes are little-endian; ziskos expects big-endian
+            let len = by.len().min(32);
+            for i in 0..len {
+                pair[192 + (32 - len) + i] = by[len - 1 - i];
+            }
+
+            let mut result = [0u8; 192];
+            let ret = unsafe { bls12_381_g2_msm_c(result.as_mut_ptr(), pair.as_ptr(), 1) };
+
+            if ret == 1 {
+                return G2Projective::identity();
+            }
+
+            let x_c1 = Fp::from_bytes(result[0..48].try_into().unwrap()).unwrap();
+            let x_c0 = Fp::from_bytes(result[48..96].try_into().unwrap()).unwrap();
+            let y_c1 = Fp::from_bytes(result[96..144].try_into().unwrap()).unwrap();
+            let y_c0 = Fp::from_bytes(result[144..192].try_into().unwrap()).unwrap();
+            G2Projective::from(G2Affine {
+                x: Fp2 { c0: x_c0, c1: x_c1 },
+                y: Fp2 { c0: y_c0, c1: y_c1 },
+                infinity: Choice::from(0u8),
+            })
         }
 
-        acc
+        #[cfg(not(all(target_os = "zkvm", target_vendor = "zisk")))]
+        {
+            let mut acc = G2Projective::identity();
+
+            // This is a simple double-and-add implementation of point
+            // multiplication, moving from most significant to least
+            // significant bit of the scalar.
+            //
+            // We skip the leading bit because it's always unset for Fq
+            // elements.
+            for bit in by
+                .iter()
+                .rev()
+                .flat_map(|byte| (0..8).rev().map(move |i| Choice::from((byte >> i) & 1u8)))
+                .skip(1)
+            {
+                acc = acc.double();
+                acc = G2Projective::conditional_select(&acc, &(acc + self), bit);
+            }
+
+            acc
+        }
     }
 
     fn psi(&self) -> G2Projective {

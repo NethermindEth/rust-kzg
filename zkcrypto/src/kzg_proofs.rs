@@ -103,22 +103,56 @@ pub fn eval_poly(p: &PolyData, x: &ZFr) -> ZFr {
 }
 
 pub fn pairings_verify(a1: &ZG1, a2: &ZG2, b1: &ZG1, b2: &ZG2) -> bool {
-    let a1neg = a1.proj.neg();
+    #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+    {
+        extern "C" {
+            fn bls12_381_pairing_check_c(pairs: *const u8, num_pairs: usize) -> u8;
+        }
 
-    let aa1 = G1Affine::from(&a1neg);
-    let bb1 = G1Affine::from(b1.proj);
-    let aa2 = G2Affine::from(a2.proj);
-    let bb2 = G2Affine::from(b2.proj);
+        let a1neg = a1.proj.neg();
+        let aa1 = G1Affine::from(&a1neg);
+        let bb1 = G1Affine::from(b1.proj);
+        let aa2 = G2Affine::from(a2.proj);
+        let bb2 = G2Affine::from(b2.proj);
 
-    let aa2_prepared = G2Prepared::from(aa2);
-    let bb2_prepared = G2Prepared::from(bb2);
+        // Each pair = 96 bytes G1 (uncompressed) + 192 bytes G2 (uncompressed) = 288 bytes
+        let mut pairs_buf = [0u8; 576]; // 2 pairs
 
-    let loop0 = multi_miller_loop(&[(&aa1, &aa2_prepared)]);
-    let loop1 = multi_miller_loop(&[(&bb1, &bb2_prepared)]);
+        // Pair 0: (a1_neg, a2)
+        let g1_bytes = aa1.to_uncompressed();
+        pairs_buf[0..96].copy_from_slice(&g1_bytes);
+        let g2_bytes = aa2.to_uncompressed();
+        pairs_buf[96..288].copy_from_slice(&g2_bytes);
 
-    let gt_point = loop0.add(loop1);
+        // Pair 1: (b1, b2)
+        let g1_bytes = bb1.to_uncompressed();
+        pairs_buf[288..384].copy_from_slice(&g1_bytes);
+        let g2_bytes = bb2.to_uncompressed();
+        pairs_buf[384..576].copy_from_slice(&g2_bytes);
 
-    let new_point = MillerLoopResult::final_exponentiation(&gt_point);
+        let ret = unsafe { bls12_381_pairing_check_c(pairs_buf.as_ptr(), 2) };
+        return ret == 0; // 0 = pairing check passed (product of pairings == identity)
+    }
 
-    ZFp12::eq(&ZFp12::one(), &new_point.0)
+    #[cfg(not(all(target_os = "zkvm", target_vendor = "zisk")))]
+    {
+        let a1neg = a1.proj.neg();
+
+        let aa1 = G1Affine::from(&a1neg);
+        let bb1 = G1Affine::from(b1.proj);
+        let aa2 = G2Affine::from(a2.proj);
+        let bb2 = G2Affine::from(b2.proj);
+
+        let aa2_prepared = G2Prepared::from(aa2);
+        let bb2_prepared = G2Prepared::from(bb2);
+
+        let loop0 = multi_miller_loop(&[(&aa1, &aa2_prepared)]);
+        let loop1 = multi_miller_loop(&[(&bb1, &bb2_prepared)]);
+
+        let gt_point = loop0.add(loop1);
+
+        let new_point = MillerLoopResult::final_exponentiation(&gt_point);
+
+        ZFp12::eq(&ZFp12::one(), &new_point.0)
+    }
 }

@@ -13,7 +13,11 @@
 // Catch documentation errors caused by code changes.
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(missing_debug_implementations)]
-#![deny(unsafe_code)]
+#![cfg_attr(
+    not(all(target_os = "zkvm", target_vendor = "zisk")),
+    deny(unsafe_code)
+)]
+#![cfg_attr(all(target_os = "zkvm", target_vendor = "zisk"), allow(unsafe_code))]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::many_single_char_names)]
 // This lint is described at
