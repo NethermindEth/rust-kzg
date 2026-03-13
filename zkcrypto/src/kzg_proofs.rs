@@ -113,10 +113,8 @@ pub fn pairings_verify(a1: &ZG1, a2: &ZG2, b1: &ZG1, b2: &ZG2) -> bool {
     let aa2_prepared = G2Prepared::from(aa2);
     let bb2_prepared = G2Prepared::from(bb2);
 
-    let loop0 = multi_miller_loop(&[(&aa1, &aa2_prepared)]);
-    let loop1 = multi_miller_loop(&[(&bb1, &bb2_prepared)]);
-
-    let gt_point = loop0.add(loop1);
+    // Batch both pairings into a single multi_miller_loop call
+    let gt_point = multi_miller_loop(&[(&aa1, &aa2_prepared), (&bb1, &bb2_prepared)]);
 
     let new_point = MillerLoopResult::final_exponentiation(&gt_point);
 
