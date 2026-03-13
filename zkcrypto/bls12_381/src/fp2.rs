@@ -184,6 +184,7 @@ impl Fp2 {
             | (self.c1.is_zero() & self.c0.lexicographically_largest())
     }
 
+    #[cfg(not(all(target_os = "zkvm", target_vendor = "zisk")))]
     pub const fn square(&self) -> Fp2 {
         // Complex squaring:
         //
@@ -207,6 +208,22 @@ impl Fp2 {
         }
     }
 
+    #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+    pub fn square(&self) -> Fp2 {
+        use crate::zisk::{to_raw, to_mont, Complex384, ComplexMulParams, syscall_bls12_381_complex_mul};
+        let raw_c0 = to_raw(&self.c0.0);
+        let raw_c1 = to_raw(&self.c1.0);
+        let mut f1 = Complex384 { x: raw_c0, y: raw_c1 };
+        let f2 = Complex384 { x: raw_c0, y: raw_c1 };
+        let mut params = ComplexMulParams { f1: &mut f1, f2: &f2 };
+        unsafe { syscall_bls12_381_complex_mul(&mut params) };
+        Fp2 {
+            c0: Fp(to_mont(&f1.x)),
+            c1: Fp(to_mont(&f1.y)),
+        }
+    }
+
+    #[cfg(not(all(target_os = "zkvm", target_vendor = "zisk")))]
     pub fn mul(&self, rhs: &Fp2) -> Fp2 {
         // F_{p^2} x F_{p^2} multiplication implemented with operand scanning (schoolbook)
         // computes the result as:
@@ -226,6 +243,26 @@ impl Fp2 {
         }
     }
 
+    #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+    pub fn mul(&self, rhs: &Fp2) -> Fp2 {
+        use crate::zisk::{to_raw, to_mont, Complex384, ComplexMulParams, syscall_bls12_381_complex_mul};
+        let mut f1 = Complex384 {
+            x: to_raw(&self.c0.0),
+            y: to_raw(&self.c1.0),
+        };
+        let f2 = Complex384 {
+            x: to_raw(&rhs.c0.0),
+            y: to_raw(&rhs.c1.0),
+        };
+        let mut params = ComplexMulParams { f1: &mut f1, f2: &f2 };
+        unsafe { syscall_bls12_381_complex_mul(&mut params) };
+        Fp2 {
+            c0: Fp(to_mont(&f1.x)),
+            c1: Fp(to_mont(&f1.y)),
+        }
+    }
+
+    #[cfg(not(all(target_os = "zkvm", target_vendor = "zisk")))]
     pub const fn add(&self, rhs: &Fp2) -> Fp2 {
         Fp2 {
             c0: (&self.c0).add(&rhs.c0),
@@ -233,6 +270,15 @@ impl Fp2 {
         }
     }
 
+    #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+    pub fn add(&self, rhs: &Fp2) -> Fp2 {
+        Fp2 {
+            c0: (&self.c0).add(&rhs.c0),
+            c1: (&self.c1).add(&rhs.c1),
+        }
+    }
+
+    #[cfg(not(all(target_os = "zkvm", target_vendor = "zisk")))]
     pub const fn sub(&self, rhs: &Fp2) -> Fp2 {
         Fp2 {
             c0: (&self.c0).sub(&rhs.c0),
@@ -240,7 +286,24 @@ impl Fp2 {
         }
     }
 
+    #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+    pub fn sub(&self, rhs: &Fp2) -> Fp2 {
+        Fp2 {
+            c0: (&self.c0).sub(&rhs.c0),
+            c1: (&self.c1).sub(&rhs.c1),
+        }
+    }
+
+    #[cfg(not(all(target_os = "zkvm", target_vendor = "zisk")))]
     pub const fn neg(&self) -> Fp2 {
+        Fp2 {
+            c0: (&self.c0).neg(),
+            c1: (&self.c1).neg(),
+        }
+    }
+
+    #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+    pub fn neg(&self) -> Fp2 {
         Fp2 {
             c0: (&self.c0).neg(),
             c1: (&self.c1).neg(),

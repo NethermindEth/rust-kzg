@@ -777,67 +777,26 @@ impl G1Projective {
             }
         }
     }
-    #[allow(unsafe_code)]
     fn multiply(&self, by: &[u8; 32]) -> G1Projective {
-        #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+        let mut acc = G1Projective::identity();
+
+        // This is a simple double-and-add implementation of point
+        // multiplication, moving from most significant to least
+        // significant bit of the scalar.
+        //
+        // We skip the leading bit because it's always unset for Fq
+        // elements.
+        for bit in by
+            .iter()
+            .rev()
+            .flat_map(|byte| (0..8).rev().map(move |i| Choice::from((byte >> i) & 1u8)))
+            .skip(1)
         {
-            extern "C" {
-                fn bls12_381_g1_msm_c(ret: *mut u8, pairs: *const u8, num_pairs: usize) -> u8;
-            }
-
-            if bool::from(self.is_identity()) {
-                return G1Projective::identity();
-            }
-
-            let affine = G1Affine::from(self);
-
-            // Build pair: 96 bytes G1 point (x || y big-endian) + 32 bytes scalar (big-endian)
-            let mut pair = [0u8; 128];
-            pair[0..48].copy_from_slice(&affine.x.to_bytes());
-            pair[48..96].copy_from_slice(&affine.y.to_bytes());
-            // Scalar::to_bytes() is little-endian; ziskos expects big-endian
-            for i in 0..32 {
-                pair[96 + i] = by[31 - i];
-            }
-
-            let mut result = [0u8; 96];
-            let ret = unsafe { bls12_381_g1_msm_c(result.as_mut_ptr(), pair.as_ptr(), 1) };
-
-            if ret == 1 {
-                return G1Projective::identity();
-            }
-
-            let x = Fp::from_bytes(result[0..48].try_into().unwrap()).unwrap();
-            let y = Fp::from_bytes(result[48..96].try_into().unwrap()).unwrap();
-            G1Projective::from(G1Affine {
-                x,
-                y,
-                infinity: Choice::from(0u8),
-            })
+            acc = acc.double();
+            acc = G1Projective::conditional_select(&acc, &(acc + self), bit);
         }
 
-        #[cfg(not(all(target_os = "zkvm", target_vendor = "zisk")))]
-        {
-            let mut acc = G1Projective::identity();
-
-            // This is a simple double-and-add implementation of point
-            // multiplication, moving from most significant to least
-            // significant bit of the scalar.
-            //
-            // We skip the leading bit because it's always unset for Fq
-            // elements.
-            for bit in by
-                .iter()
-                .rev()
-                .flat_map(|byte| (0..8).rev().map(move |i| Choice::from((byte >> i) & 1u8)))
-                .skip(1)
-            {
-                acc = acc.double();
-                acc = G1Projective::conditional_select(&acc, &(acc + self), bit);
-            }
-
-            acc
-        }
+        acc
     }
 
     /// Multiply `self` by `crate::BLS_X`, using double and add.

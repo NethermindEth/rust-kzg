@@ -59,6 +59,8 @@ pub mod fp2;
 pub mod g1;
 #[cfg(feature = "groups")]
 pub mod g2;
+#[cfg(all(feature = "groups", target_os = "zkvm", target_vendor = "zisk"))]
+mod zisk;
 
 #[cfg(feature = "groups")]
 pub use g1::{G1Affine, G1Projective};

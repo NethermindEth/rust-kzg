@@ -384,6 +384,7 @@ impl Fp {
     }
 
     #[inline]
+    #[cfg(not(all(target_os = "zkvm", target_vendor = "zisk")))]
     pub const fn add(&self, rhs: &Fp) -> Fp {
         let (d0, carry) = adc(self.0[0], rhs.0[0], 0);
         let (d1, carry) = adc(self.0[1], rhs.0[1], carry);
@@ -398,6 +399,13 @@ impl Fp {
     }
 
     #[inline]
+    #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+    pub fn add(&self, rhs: &Fp) -> Fp {
+        Fp(crate::zisk::fp_add_mont(&self.0, &rhs.0))
+    }
+
+    #[inline]
+    #[cfg(not(all(target_os = "zkvm", target_vendor = "zisk")))]
     pub const fn neg(&self) -> Fp {
         let (d0, borrow) = sbb(MODULUS[0], self.0[0], 0);
         let (d1, borrow) = sbb(MODULUS[1], self.0[1], borrow);
@@ -423,8 +431,21 @@ impl Fp {
     }
 
     #[inline]
+    #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+    pub fn neg(&self) -> Fp {
+        Fp(crate::zisk::fp_neg_mont(&self.0))
+    }
+
+    #[inline]
+    #[cfg(not(all(target_os = "zkvm", target_vendor = "zisk")))]
     pub const fn sub(&self, rhs: &Fp) -> Fp {
         (&rhs.neg()).add(self)
+    }
+
+    #[inline]
+    #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+    pub fn sub(&self, rhs: &Fp) -> Fp {
+        Fp(crate::zisk::fp_sub_mont(&self.0, &rhs.0))
     }
 
     /// Returns `c = a.zip(b).fold(0, |acc, (a_i, b_i)| acc + a_i * b_i)`.
@@ -567,6 +588,7 @@ impl Fp {
     }
 
     #[inline]
+    #[cfg(not(all(target_os = "zkvm", target_vendor = "zisk")))]
     pub const fn mul(&self, rhs: &Fp) -> Fp {
         let (t0, carry) = mac(0, self.0[0], rhs.0[0], 0);
         let (t1, carry) = mac(0, self.0[0], rhs.0[1], carry);
@@ -613,8 +635,15 @@ impl Fp {
         Self::montgomery_reduce(t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11)
     }
 
+    #[inline]
+    #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+    pub fn mul(&self, rhs: &Fp) -> Fp {
+        Fp(crate::zisk::fp_mul_mont(&self.0, &rhs.0))
+    }
+
     /// Squares this element.
     #[inline]
+    #[cfg(not(all(target_os = "zkvm", target_vendor = "zisk")))]
     pub const fn square(&self) -> Self {
         let (t1, carry) = mac(0, self.0[0], self.0[1], 0);
         let (t2, carry) = mac(0, self.0[0], self.0[2], carry);
@@ -662,6 +691,13 @@ impl Fp {
         let (t11, _) = adc(t11, 0, carry);
 
         Self::montgomery_reduce(t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11)
+    }
+
+    /// Squares this element.
+    #[inline]
+    #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+    pub fn square(&self) -> Self {
+        Fp(crate::zisk::fp_square_mont(&self.0))
     }
 }
 
