@@ -337,12 +337,21 @@ impl Scalar {
 
     /// Converts from an integer represented in little endian
     /// into its (congruent) `Scalar` representation.
+    #[cfg(not(all(target_os = "zkvm", target_vendor = "zisk")))]
     pub const fn from_raw(val: [u64; 4]) -> Self {
+        (&Scalar(val)).mul(&R2)
+    }
+
+    /// Converts from an integer represented in little endian
+    /// into its (congruent) `Scalar` representation.
+    #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+    pub fn from_raw(val: [u64; 4]) -> Self {
         (&Scalar(val)).mul(&R2)
     }
 
     /// Squares this element.
     #[inline]
+    #[cfg(not(all(target_os = "zkvm", target_vendor = "zisk")))]
     pub const fn square(&self) -> Scalar {
         let (r1, carry) = mac(0, self.0[0], self.0[1], 0);
         let (r2, carry) = mac(0, self.0[0], self.0[2], carry);
@@ -371,6 +380,13 @@ impl Scalar {
         let (r7, _) = adc(0, r7, carry);
 
         Scalar::montgomery_reduce(r0, r1, r2, r3, r4, r5, r6, r7)
+    }
+
+    /// Squares this element (zisk accelerated).
+    #[inline]
+    #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+    pub fn square(&self) -> Scalar {
+        Scalar(crate::zisk::scalar_square_mont(&self.0))
     }
 
     /// Exponentiates `self` by `by`, where `by` is a
@@ -556,6 +572,7 @@ impl Scalar {
 
     /// Multiplies `rhs` by `self`, returning the result.
     #[inline]
+    #[cfg(not(all(target_os = "zkvm", target_vendor = "zisk")))]
     pub const fn mul(&self, rhs: &Self) -> Self {
         // Schoolbook multiplication
 
@@ -580,6 +597,13 @@ impl Scalar {
         let (r6, r7) = mac(r6, self.0[3], rhs.0[3], carry);
 
         Scalar::montgomery_reduce(r0, r1, r2, r3, r4, r5, r6, r7)
+    }
+
+    /// Multiplies `rhs` by `self`, returning the result (zisk accelerated).
+    #[inline]
+    #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+    pub fn mul(&self, rhs: &Self) -> Self {
+        Scalar(crate::zisk::scalar_mul_mont(&self.0, &rhs.0))
     }
 
     /// Subtracts `rhs` from `self`, returning the result.

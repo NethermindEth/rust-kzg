@@ -453,6 +453,7 @@ impl Fp {
     /// Implements Algorithm 2 from Patrick Longa's
     /// [ePrint 2022-367](https://eprint.iacr.org/2022/367) §3.
     #[inline]
+    #[cfg(not(all(target_os = "zkvm", target_vendor = "zisk")))]
     pub(crate) fn sum_of_products<const T: usize>(a: [Fp; T], b: [Fp; T]) -> Fp {
         // For a single `a x b` multiplication, operand scanning (schoolbook) takes each
         // limb of `a` in turn, and multiplies it by all of the limbs of `b` to compute
@@ -507,6 +508,23 @@ impl Fp {
         // Because we represent F_p elements in non-redundant form, we need a final
         // conditional subtraction to ensure the output is in range.
         (&Fp([u0, u1, u2, u3, u4, u5])).subtract_p()
+    }
+
+    /// Returns `c = a.zip(b).fold(0, |acc, (a_i, b_i)| acc + a_i * b_i)`.
+    ///
+    /// Zisk version: chains arith384_mod syscalls for T+1 total calls.
+    #[inline]
+    #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+    pub(crate) fn sum_of_products<const T: usize>(a: [Fp; T], b: [Fp; T]) -> Fp {
+        let mut a_limbs = [[0u64; 6]; T];
+        let mut b_limbs = [[0u64; 6]; T];
+        let mut i = 0;
+        while i < T {
+            a_limbs[i] = a[i].0;
+            b_limbs[i] = b[i].0;
+            i += 1;
+        }
+        Fp(crate::zisk::fp_sum_of_products(&a_limbs, &b_limbs))
     }
 
     #[inline(always)]

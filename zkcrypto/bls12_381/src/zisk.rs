@@ -227,3 +227,100 @@ pub fn to_raw(x: &[u64; 6]) -> [u64; 6] {
 pub fn to_mont(x: &[u64; 6]) -> [u64; 6] {
     fp_mul_raw(x, &R_RAW)
 }
+
+/// Sum of products: computes (a[0]*b[0] + a[1]*b[1] + ... + a[T-1]*b[T-1]) in Montgomery form.
+///
+/// Inputs are in Montgomery form (a_i*R, b_i*R).
+/// Uses chained arith384_mod calls:
+///   t = a[0]R * b[0]R + 0       = a[0]*b[0]*R²
+///   t = a[1]R * b[1]R + t       = (a[0]*b[0] + a[1]*b[1])*R²
+///   ...
+///   t = a[T-1]R * b[T-1]R + t   = (sum of all products)*R²
+///   result = t * R_INV + 0       = (sum)*R  (Montgomery form)
+///
+/// Total: T+1 syscalls for T products.
+#[inline]
+pub fn fp_sum_of_products<const T: usize>(a: &[[u64; 6]; T], b: &[[u64; 6]; T]) -> [u64; 6] {
+    let mut acc = ZERO_6;
+    for i in 0..T {
+        // acc = a[i]*R * b[i]*R + acc  (mod p)
+        let mut out = [0u64; 6];
+        let mut params = Arith384ModParams {
+            a: &a[i],
+            b: &b[i],
+            c: &acc,
+            module: &MODULUS,
+            d: &mut out,
+        };
+        unsafe { syscall_arith384_mod(&mut params) };
+        acc = out;
+    }
+    // acc = (sum of products) * R².  Multiply by R_INV to get (sum)*R.
+    fp_mul_raw(&acc, &R_INV_RAW)
+}
+
+// ============================================================================
+// Scalar field (256-bit) operations via arith256_mod syscall
+// ============================================================================
+
+/// Parameters for `syscall_arith256_mod`: computes d = (a * b + c) mod module
+#[repr(C)]
+pub struct Arith256ModParams<'a> {
+    pub a: &'a [u64; 4],
+    pub b: &'a [u64; 4],
+    pub c: &'a [u64; 4],
+    pub module: &'a [u64; 4],
+    pub d: &'a mut [u64; 4],
+}
+
+extern "C" {
+    pub fn syscall_arith256_mod(params: &mut Arith256ModParams);
+}
+
+/// BLS12-381 scalar field modulus q
+pub const SCALAR_MODULUS: [u64; 4] = [
+    0xffff_ffff_0000_0001,
+    0x53bd_a402_fffe_5bfe,
+    0x3339_d808_09a1_d805,
+    0x73ed_a753_299d_7d48,
+];
+
+/// R^-1 mod q where R = 2^256 (for Montgomery correction)
+pub const SCALAR_R_INV_RAW: [u64; 4] = [
+    0x13f7_5b69_fe75_c040,
+    0xab6f_ca8f_09dc_705f,
+    0x7204_078a_4f77_266a,
+    0x1bbe_8693_3000_9d57,
+];
+
+const SCALAR_ZERO_4: [u64; 4] = [0, 0, 0, 0];
+
+/// Raw modular multiply: d = (a * b) mod q
+#[inline]
+pub fn scalar_mul_raw(a: &[u64; 4], b: &[u64; 4]) -> [u64; 4] {
+    let mut out = [0u64; 4];
+    let mut params = Arith256ModParams {
+        a,
+        b,
+        c: &SCALAR_ZERO_4,
+        module: &SCALAR_MODULUS,
+        d: &mut out,
+    };
+    unsafe { syscall_arith256_mod(&mut params) };
+    out
+}
+
+/// Montgomery multiply: given aR, bR, returns abR mod q (2 syscalls)
+#[inline]
+pub fn scalar_mul_mont(a: &[u64; 4], b: &[u64; 4]) -> [u64; 4] {
+    // Step 1: (aR * bR) mod q = abR² mod q
+    let ab_r2 = scalar_mul_raw(a, b);
+    // Step 2: abR² * R⁻¹ mod q = abR mod q
+    scalar_mul_raw(&ab_r2, &SCALAR_R_INV_RAW)
+}
+
+/// Montgomery square: given aR, returns a²R mod q (2 syscalls)
+#[inline]
+pub fn scalar_square_mont(a: &[u64; 4]) -> [u64; 4] {
+    scalar_mul_mont(a, a)
+}
