@@ -576,14 +576,46 @@ pub fn verify_kzg_proof_rust<
     proof: &TG1,
     s: &TKZGSettings,
 ) -> Result<bool, String> {
-    if !commitment.is_inf() && !commitment.is_valid() {
-        return Err("Invalid commitment".to_string());
-    }
-    if !proof.is_inf() && !proof.is_valid() {
-        return Err("Invalid proof".to_string());
+    // On the ZisK zkVM target, delegate to the native BLS12-381 precompile via FFI.
+    // `verify_kzg_proof_c` is exported no_mangle from ziskos (always linked on this
+    // target) and uses syscall_bls12_381_curve_add/dbl — prover circuit rows instead
+    // of pure-Rust BLS12-381 arithmetic. No Cargo dep needed.
+    #[cfg(all(target_os = "zkvm", target_vendor = "zisk"))]
+    {
+        extern "C" {
+            fn verify_kzg_proof_c(
+                z: *const u8,
+                y: *const u8,
+                commitment: *const u8,
+                proof: *const u8,
+            ) -> bool;
+        }
+        let z_bytes = z.to_bytes();
+        let y_bytes = y.to_bytes();
+        let commitment_bytes = commitment.to_bytes();
+        let proof_bytes = proof.to_bytes();
+        let _ = s; // KZGSettings not needed — precompile uses its own trusted setup
+        return Ok(unsafe {
+            verify_kzg_proof_c(
+                z_bytes.as_ptr(),
+                y_bytes.as_ptr(),
+                commitment_bytes.as_ptr(),
+                proof_bytes.as_ptr(),
+            )
+        });
     }
 
-    s.check_proof_single(commitment, proof, z, y)
+    #[cfg(not(all(target_os = "zkvm", target_vendor = "zisk")))]
+    {
+        if !commitment.is_inf() && !commitment.is_valid() {
+            return Err("Invalid commitment".to_string());
+        }
+        if !proof.is_inf() && !proof.is_valid() {
+            return Err("Invalid proof".to_string());
+        }
+
+        s.check_proof_single(commitment, proof, z, y)
+    }
 }
 
 pub fn verify_kzg_proof_raw<
